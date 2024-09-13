@@ -3,3 +3,4 @@ from tkinter import *
 from kanren import *
 from sympy import *
 
+print("hello world")
