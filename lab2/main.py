@@ -30,9 +30,10 @@ def main():
     # Настройки генетического алгоритма
     hof = tools.HallOfFame(1)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
-    stats.register("avg", lambda x: sum(x) / len(x))
-    stats.register("min", min)
-    stats.register("max", max)
+    # Настройки статистики
+    stats.register("avg", lambda x: sum(val[0] for val in x) / len(x))
+    stats.register("min", lambda x: min(val[0] for val in x))
+    stats.register("max", lambda x: max(val[0] for val in x))
 
     # Запуск алгоритма
     algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=50, stats=stats, halloffame=hof, verbose=True)
