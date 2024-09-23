@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
 from kanren import Relation, facts, run, var
-from sympy import symbols
 
 # Определяем отношения для птиц
 bird = Relation()
