@@ -47,9 +47,7 @@ def create_window():
     result_label.pack()
 
     # Кнопка для запуска классификации
-    classify_button = tk.Button(root, text="Классифицировать", font=("Helvetica", 12, "bold"), bg="#87cefa", fg="white",
-                                activebackground="#4682b4", activeforeground="white",
-                                command=lambda: on_classify(size_input, color_entry, habitat_entry, result_label))
+    classify_button = tk.Button(root, text="Классифицировать", font=("Helvetica", 12, "bold"), bg="#87cefa", fg="white",activebackground="#4682b4", activeforeground="white", command=lambda: on_classify(size_input, color_entry, habitat_entry, result_label))
     classify_button.pack(pady=20)
 
     return root

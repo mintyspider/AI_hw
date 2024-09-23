@@ -27,10 +27,10 @@ def on_classify():
         messagebox.showerror("Ошибка ввода", "Некорректный ввод размера! Введите маленький, средний или большой.")
         return
     if not color_input:
-        messagebox.showerror("Ошибка ввода", "Введите окрас птицы!")
+        messagebox.showerror("Ошибка ввода", "Введите окрас птицы (со строчной буквы)!")
         return
     if not habitat_input:
-        messagebox.showerror("Ошибка ввода", "Введите среду обитания птицы!")
+        messagebox.showerror("Ошибка ввода", "Введите среду обитания птицы (со строчной буквы)!")
         return
 
     result = classify_bird(size_input, color_input, habitat_input)
@@ -42,7 +42,7 @@ def on_classify():
 # Создание красивого интерфейса с помощью tkinter
 root = tk.Tk()
 root.title("Классификация птиц")
-root.geometry("400x300")
+root.geometry("400x350")
 root.config(bg="#f0f8ff")
 
 # Заголовок
@@ -63,8 +63,7 @@ habitat_entry = tk.Entry(root, font=("Helvetica", 12))
 habitat_entry.pack()
 
 # Кнопка для запуска классификации
-classify_button = tk.Button(root, text="Классифицировать", font=("Helvetica", 12, "bold"), bg="#87cefa", fg="white", 
-                            activebackground="#4682b4", activeforeground="white", command=on_classify)
+classify_button = tk.Button(root, text="Классифицировать", font=("Helvetica", 12, "bold"), bg="#87cefa", fg="white", activebackground="#4682b4", activeforeground="white", command=on_classify)
 classify_button.pack(pady=20)
 
 # Поле для отображения результата
