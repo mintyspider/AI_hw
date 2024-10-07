@@ -1,145 +1,98 @@
 import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import accuracy_score
 
-class Vector:
-    def __init__(self, *values):
-        if len(values) == 1 and isinstance(values[0], int):  # Если передана длина
-            self.n = values[0]  # длина вектора
-            self.v = np.zeros(self.n)  # создаем массив длины n
-        else:  # Если передан список значений
-            self.n = len(values)
-            self.v = np.array(values)
+# Функции активации и их производные
+def relu(x):
+    return np.maximum(0, x)
 
-    # Обращение по индексу
-    def __getitem__(self, i):
-        return self.v[i]
+def relu_derivative(x):
+    return np.where(x > 0, 1, 0)
 
-    def __setitem__(self, i, value):
-        self.v[i] = value
+def softmax(x):
+    exps = np.exp(x - np.max(x))  # для стабильности численных вычислений
+    return exps / np.sum(exps, axis=1, keepdims=True)
 
+# Функция потерь (кросс-энтропия)
+def cross_entropy_loss(y_true, y_pred):
+    return -np.mean(np.sum(y_true * np.log(y_pred + 1e-10), axis=1))
 
-class Matrix:
-    def __init__(self, n, m):
-        self.n = n  # количество строк
-        self.m = m  # количество столбцов
-        self.v = np.random.uniform(-0.5, 0.5, (n, m))  # матрица весов со случайными значениями
-
-    # Обращение по индексу
-    def __getitem__(self, idx):
-        i, j = idx  # распаковка индексов
-        return self.v[i, j]
-
-    def __setitem__(self, idx, value):
-        i, j = idx  # распаковка индексов
-        self.v[i, j] = value
-
-
-class Network:
-    class LayerT:
-        def __init__(self, input_size, output_size):
-            self.x = Vector(input_size)  # вход слоя
-            self.z = Vector(output_size)  # активированный выход слоя
-            self.df = Vector(output_size)  # производная активации слоя
-
-    def __init__(self, sizes):
-        self.layersN = len(sizes) - 1  # количество слоёв
-        self.weights = [Matrix(sizes[k], sizes[k - 1]) for k in range(1, len(sizes))]  # матрицы весов
-        self.L = [self.LayerT(sizes[k - 1], sizes[k]) for k in range(1, len(sizes))]  # инициализация слоёв
-        self.deltas = [Vector(sizes[k]) for k in range(1, len(sizes))]  # вектора дельт
+class NeuralNetwork:
+    def __init__(self, input_size, hidden_size, output_size):
+        # Инициализация весов
+        self.weights_input_hidden = np.random.randn(input_size, hidden_size) * 0.01
+        self.weights_hidden_output = np.random.randn(hidden_size, output_size) * 0.01
+        self.bias_hidden = np.zeros((1, hidden_size))
+        self.bias_output = np.zeros((1, output_size))
 
     # Прямое распространение
-    def forward(self, input):
-        for k in range(self.layersN):
-            if k == 0:
-                for i in range(input.n):
-                    self.L[k].x[i] = input[i]  # копируем вход на первый слой
-            else:
-                for i in range(self.L[k - 1].z.n):
-                    self.L[k].x[i] = self.L[k - 1].z[i]  # передаем выход с предыдущего слоя как вход текущего
+    def forward(self, X):
+        self.z1 = np.dot(X, self.weights_input_hidden) + self.bias_hidden
+        self.a1 = relu(self.z1)  # ReLU на скрытом слое
+        self.z2 = np.dot(self.a1, self.weights_hidden_output) + self.bias_output
+        self.a2 = softmax(self.z2)  # Softmax на выходном слое
+        return self.a2
 
-            for i in range(self.weights[k].n):
-                y = 0
-                for j in range(self.weights[k].m):
-                    y += self.weights[k][i, j] * self.L[k].x[j]
+    # Обратное распространение
+    def backward(self, X, y_true, y_pred, learning_rate):
+        m = X.shape[0]  # количество примеров
 
-                # Активация с помощью ReLU
-                self.L[k].z[i] = max(0, y)  # ReLU
-                self.L[k].df[i] = 1 if y > 0 else 0  # производная ReLU
+        # Вычисляем градиенты для весов и смещений
+        dz2 = y_pred - y_true
+        dw2 = np.dot(self.a1.T, dz2) / m
+        db2 = np.sum(dz2, axis=0, keepdims=True) / m
 
-        return self.L[self.layersN - 1].z  # возвращаем результат
-    
-    def backward(self, output, error):
-        last = self.layersN - 1
-        error[0] = 0  # обнуляем ошибку (передается как список для изменения)
+        dz1 = np.dot(dz2, self.weights_hidden_output.T) * relu_derivative(self.z1)
+        dw1 = np.dot(X.T, dz1) / m
+        db1 = np.sum(dz1, axis=0, keepdims=True) / m
 
-        # Находим дельту для последнего слоя
-        for i in range(output.n):
-            e = self.L[last].z[i] - output[i]  # разность значений
-            self.deltas[last][i] = e * self.L[last].df[i]  # вычисляем дельту
-            error[0] += e ** 2 / 2  # прибавляем к ошибке половину квадрата разности
+        # Обновляем веса и смещения
+        self.weights_hidden_output -= learning_rate * dw2
+        self.bias_output -= learning_rate * db2
+        self.weights_input_hidden -= learning_rate * dw1
+        self.bias_hidden -= learning_rate * db1
 
-        # Вычисляем дельты для предыдущих слоёв
-        for k in range(last, 0, -1):
-            for i in range(self.weights[k].m):
-                self.deltas[k - 1][i] = 0
+    # Обучение модели
+    def train(self, X, y, epochs, learning_rate):
+        for epoch in range(epochs):
+            y_pred = self.forward(X)
+            loss = cross_entropy_loss(y, y_pred)
+            self.backward(X, y, y_pred, learning_rate)
 
-                # Умножаем на транспонированную матрицу весов и вычисляем новую дельту
-                for j in range(self.weights[k].n):
-                    self.deltas[k - 1][i] += self.weights[k][j, i] * self.deltas[k][j]
+            if epoch % 100 == 0:
+                print(f"Epoch {epoch}, Loss: {loss}")
 
-                # Умножаем на производную активационной функции
-                self.deltas[k - 1][i] *= self.L[k - 1].df[i]
-        
-    def update_weights(self, alpha):
-        for k in range(self.layersN):
-            for i in range(self.weights[k].n):
-                for j in range(self.weights[k].m):
-                    # Обновляем весовой коэффициент с учётом скорости обучения
-                    self.weights[k][i, j] -= alpha * self.deltas[k][i] * self.L[k].x[j]
+    # Предсказание классов
+    def predict(self, X):
+        y_pred = self.forward(X)
+        return np.argmax(y_pred, axis=1)
 
-    def train(self, X, Y, alpha, eps, epochs):
-        epoch = 1  # номер эпохи
+# Загружаем датасет digits
+digits = load_digits()
+X = digits.data
+y = digits.target
 
-        while epoch <= epochs:
-            error = [0]  # обнуляем ошибку (список для передачи по ссылке)
+# Преобразование целевых меток в формат OneHot
+encoder = OneHotEncoder(sparse_output=False)
+y_onehot = encoder.fit_transform(y.reshape(-1, 1))
 
-            # Проходим по всем элементам обучающего набора
-            for i in range(len(X)):
-                self.forward(X[i])  # прямое распространение
-                self.backward(Y[i], error)  # обратное распространение ошибки
-                self.update_weights(alpha)  # обновление весовых коэффициентов
+# Разделение данных на обучающую и тестовую выборки
+X_train, X_test, y_train, y_test = train_test_split(X, y_onehot, test_size=0.2, random_state=42)
 
-            # Выводим текущий номер эпохи и ошибку
-            print(f"epoch: {epoch}, error: {error[0]}")
+# Параметры нейронной сети
+input_size = X_train.shape[1]  # Количество входных признаков
+hidden_size = 64  # Количество нейронов в скрытом слое
+output_size = y_onehot.shape[1]  # Количество выходов (классов)
 
-            # Прерываем, если ошибка меньше заданного порога
-            if error[0] <= eps:
-                break
+# Создаём и обучаем нейронную сеть
+network = NeuralNetwork(input_size, hidden_size, output_size)
+network.train(X_train, y_train, epochs=1000, learning_rate=0.1)
 
-            epoch += 1  # увеличиваем номер эпохи
+# Оцениваем качество на тестовой выборке
+y_pred_test = network.predict(X_test)
+y_test_labels = np.argmax(y_test, axis=1)  # Преобразуем one-hot метки обратно в классы
 
-# массив входных обучающих векторов
-X = [
-    np.array([0, 0]),
-    np.array([0, 1]),
-    np.array([1, 0]),
-    np.array([1, 1])
-]
-
-# массив выходных обучающих векторов
-Y = [
-    np.array([0.0]),  # 0 ^ 0 = 0
-    np.array([1.0]),  # 0 ^ 1 = 1
-    np.array([1.0]),  # 1 ^ 0 = 1
-    np.array([0.0])   # 1 ^ 1 = 0
-]
-
-# создаём сеть с двумя входами, тремя нейронами в скрытом слое и одним выходом
-network = Network([2, 3, 1])
-
-# Запускаем обучение сети с заданными параметрами
-network.train(X, Y, alpha=0.5, eps=1e-7, epochs=100000)
-
-# Проверяем выходные данные сети для каждого входного вектора
-for i in range(4):
-    output = network.forward(X[i])  # Прямое распространение
-    print(f"X: {X[i][0]} {X[i][1]}, Y: {Y[i][0]}, output: {output[0]}")
+accuracy = accuracy_score(y_test_labels, y_pred_test)
+print(f"Точность на тестовой выборке: {accuracy * 100:.2f}%")

@@ -7,6 +7,7 @@ name = "pypi"
 kanren = "*"
 sympy = "*"
 deap = "*"
+scikit-learn = "*"
 
 [dev-packages]
 
