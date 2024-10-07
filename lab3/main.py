@@ -4,27 +4,29 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-# Функции активации и их производные
+# Функция активации
 def relu(x):
     return np.maximum(0, x)
 
+# Производная
 def relu_derivative(x):
     return np.where(x > 0, 1, 0)
 
+# Входные данные в вероятность
 def softmax(x):
     exps = np.exp(x - np.max(x))  # для стабильности численных вычислений
     return exps / np.sum(exps, axis=1, keepdims=True)
 
 # Функция потерь (кросс-энтропия)
 def cross_entropy_loss(y_true, y_pred):
-    return -np.mean(np.sum(y_true * np.log(y_pred + 1e-10), axis=1))
+    return -np.mean(np.sum(y_true * np.log(y_pred + 1e-10), axis=1)) # предотвращение логарифмирования 0
 
 class NeuralNetwork:
     def __init__(self, input_size, hidden_size, output_size):
         # Инициализация весов
-        self.weights_input_hidden = np.random.randn(input_size, hidden_size) * 0.01
+        self.weights_input_hidden = np.random.randn(input_size, hidden_size) * 0.01 # случайные значения
         self.weights_hidden_output = np.random.randn(hidden_size, output_size) * 0.01
-        self.bias_hidden = np.zeros((1, hidden_size))
+        self.bias_hidden = np.zeros((1, hidden_size)) # смещения в 0
         self.bias_output = np.zeros((1, output_size))
 
     # Прямое распространение
@@ -69,10 +71,10 @@ class NeuralNetwork:
         y_pred = self.forward(X)
         return np.argmax(y_pred, axis=1)
 
-# Загружаем датасет digits
+# Загружаем датасет digits (изображения цифр (8x8 пикселей))
 digits = load_digits()
-X = digits.data
-y = digits.target
+X = digits.data # матрица признаков
+y = digits.target # метки классов
 
 # Преобразование целевых меток в формат OneHot
 encoder = OneHotEncoder(sparse_output=False)
